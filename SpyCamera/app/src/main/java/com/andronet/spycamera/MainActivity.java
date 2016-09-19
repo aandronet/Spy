@@ -14,7 +14,6 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -25,12 +24,12 @@ import java.util.List;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
-    public static int currentVolume;
     private int tapCount;
     private Button kill;
     private SharedPreferences sharedPref;
     public static String ENABLED_KEY = "enabled";
     private Handler handler = new Handler();
+    private AudioManager audioManager;
 
     private static final int
             PERMISSION_PHOTO_CAMERA = 151,
@@ -41,6 +40,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
         kill = (Button) findViewById(R.id.killMe);
         kill.setOnClickListener(this);
         RelativeLayout root = (RelativeLayout) findViewById(R.id.root);
@@ -49,7 +50,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         sharedPref = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
 
         AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        currentVolume = getVolume(audio);
 
         if (Build.VERSION.SDK_INT >= 23) {
             if (!Settings.canDrawOverlays(MainActivity.this)) {
@@ -84,10 +84,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         } else if (view.getId() == R.id.killMe) {
             killTapped();
         }
-    }
-
-    public static int getVolume(AudioManager audio) {
-        return audio.getStreamVolume(AudioManager.STREAM_MUSIC);
     }
 
     public static boolean isPermissionGranted(Context context, String permission) {
@@ -145,23 +141,51 @@ public class MainActivity extends Activity implements View.OnClickListener {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (action == KeyEvent.ACTION_DOWN) {
                     Intent i = new Intent(MainActivity.this, BackgroundVideoRecorder.class);
-                    //i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    Log.e("AAAAAAAAAAAAAA", "AAAAAAAAAAAA");
                     if (!BackgroundVideoRecorder.isRunning) {
+                        disableSound();
                         startService(i);
                     }
                 }
                 return true;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (action == KeyEvent.ACTION_DOWN) {
-                    Log.e("BBBBBBBBBBBBBB", "BBBBBBBBBBBB");
                     if (BackgroundVideoRecorder.isRunning) {
                         stopService(new Intent(MainActivity.this, BackgroundVideoRecorder.class));
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                enableSound();
+                            }
+                        }, 1000L);
                     }
                 }
                 return true;
             default:
                 return super.dispatchKeyEvent(event);
+        }
+    }
+
+    private void disableSound() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+            audioManager.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_MUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+            audioManager.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+            audioManager.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+        } else {
+            audioManager.setStreamMute(AudioManager.STREAM_ALARM, true);
+            audioManager.setStreamMute(AudioManager.STREAM_RING, true);
+            audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, true);
+        }
+    }
+
+    private void enableSound() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+            audioManager.adjustStreamVolume(AudioManager.STREAM_ALARM, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+            audioManager.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+            audioManager.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE);
+        } else {
+            audioManager.setStreamMute(AudioManager.STREAM_ALARM, false);
+            audioManager.setStreamMute(AudioManager.STREAM_RING, false);
+            audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false);
         }
     }
 }
