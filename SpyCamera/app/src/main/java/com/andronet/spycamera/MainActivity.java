@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -25,10 +24,8 @@ import java.util.List;
 public class MainActivity extends Activity implements View.OnClickListener {
 
     private int tapCount;
-    private Button kill;
-    private SharedPreferences sharedPref;
-    public static String ENABLED_KEY = "enabled";
-    private Handler handler = new Handler();
+    private Button settings;
+    protected Handler handler = new Handler();
     private AudioManager audioManager;
 
     private static final int
@@ -40,16 +37,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
-        kill = (Button) findViewById(R.id.killMe);
-        kill.setOnClickListener(this);
+        settings = (Button) findViewById(R.id.settings);
+        settings.setOnClickListener(this);
         RelativeLayout root = (RelativeLayout) findViewById(R.id.root);
         root.setOnClickListener(this);
-
-        sharedPref = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
-
-        AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         if (Build.VERSION.SDK_INT >= 23) {
             if (!Settings.canDrawOverlays(MainActivity.this)) {
@@ -79,10 +73,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     @Override
     public void onClick(View view) {
-        if (view.getId() == R.id.root) {
-            screenTapped();
-        } else if (view.getId() == R.id.killMe) {
-            killTapped();
+        if (view.getId() == R.id.settings) {
+            Intent i = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(i);
+            finish();
         }
     }
 
@@ -93,44 +87,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
             return true;
         }
         return false;
-    }
-
-    public void screenTapped() {
-        tapCount = tapCount + 1;
-        if (tapCount == 3) {
-            kill.setVisibility(View.VISIBLE);
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    kill.setVisibility(View.GONE);
-                }
-            }, 5000L);
-            if (sharedPref.getBoolean(ENABLED_KEY, false)) {
-                kill.setText("Disable");
-            } else {
-                kill.setText("Enable");
-            }
-        }
-
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                tapCount = 0;
-            }
-        }, 3000L);
-    }
-
-    public void killTapped() {
-        boolean enable;
-        if (sharedPref.getBoolean(ENABLED_KEY, false)) {
-            enable = false;
-        } else {
-            enable = true;
-        }
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.putBoolean(ENABLED_KEY, enable);
-        editor.commit();
-        kill.setVisibility(View.GONE);
     }
 
     @Override
